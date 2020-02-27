@@ -5,18 +5,23 @@
 #include <vector>
 using namespace std;
 
-struct X
+class X
 {
+public:
     X() { cout << "constructor\n"; }
     ~X() { cout << c; }
-    int a = -13;
-    string c = "hello";
+
+    void print() { cout << a << " " << c << endl; }
 
     template<int N> auto& get()
     {
         if constexpr (N == 0) return a;
         else return c;
     }
+
+private:
+    int a = -13;
+    string c = "hello";
 };
 
 namespace std
