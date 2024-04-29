@@ -30,7 +30,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    array<char, INET6_ADDRSTRLEN> ipstr;
+    string ipstr(INET6_ADDRSTRLEN, '\0');
     for (auto* i = res; i != nullptr; i = i->ai_next)
     {
         void* addr;
