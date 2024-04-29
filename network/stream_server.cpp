@@ -1,6 +1,5 @@
 #include <cstring>
 #include <csignal>
-#include <array>
 #include <iostream>
 #include <string>
 #include <netdb.h>
@@ -68,9 +67,9 @@ void handle_sigchld()
 
 int main()
 {
-    int listening_descriptor;
-    auto* service_info = get_service_info();
+    int listening_descriptor{-1};
     bool bind_successful{false};
+    auto* service_info = get_service_info();
 
     for (auto* info = service_info; info != nullptr; info = info->ai_next)
     {
@@ -87,7 +86,7 @@ int main()
         if (setsockopt(listening_descriptor, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
         {
             cerr << "setsockopt() to reuse port failed\n";
-            exit(1);
+            return 1;
         }
 
         if (bind(listening_descriptor, info->ai_addr, info->ai_addrlen) == 1)
@@ -106,14 +105,14 @@ int main()
 
     if (!bind_successful)
     {
-        cerr << "bind() failed\n";
-        exit(1);
+        cerr << "bind() never succeeded\n";
+        return 1;
     }
 
     if (listen(listening_descriptor, max_waiting_connections) == -1)
     {
         cerr << "listen() failed for descriptor " << listening_descriptor << '\n';
-        exit(1);
+        return 1;
     }
 
     handle_sigchld();
@@ -146,7 +145,7 @@ int main()
             }
 
             close(connection_descriptor);
-            exit(0);    // child process handles just one connection and then exits
+            return 0;    // child process handles just one connection and then exits
         }
 
         close(connection_descriptor);   // parent process doesn't need this
