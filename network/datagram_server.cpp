@@ -11,15 +11,16 @@
 #include <sys/wait.h>
 using namespace std;
 
-const string port = "44444";
-const int max_waiting_connections = 10;
+const string port = "44445";
+const int max_data_size = 100;
 
 addrinfo* get_addr_info()
 {
     addrinfo hints;
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_family = AF_INET;          // use IPv4 only
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_flags = AI_PASSIVE;        // use my IP
 
     addrinfo* service_info;
     if (int status = getaddrinfo(nullptr, port.c_str(), &hints, &service_info);
@@ -67,14 +68,14 @@ void handle_sigchld()
 
 int main()
 {
-    int listening_descriptor{-1};
+    int receiving_descriptor{-1};
     bool bind_successful{false};
     auto* service_info = get_addr_info();
 
     for (auto* info = service_info; info != nullptr; info = info->ai_next)
     {
-        if (listening_descriptor = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
-            listening_descriptor == -1)
+        if (receiving_descriptor = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
+            receiving_descriptor == -1)
         {
             cerr << "socket() failed: family[" << info->ai_family 
                  << "] type[" << info->ai_socktype
@@ -82,16 +83,9 @@ int main()
             continue;
         }
 
-        const int yes{1};
-        if (setsockopt(listening_descriptor, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
+        if (bind(receiving_descriptor, info->ai_addr, info->ai_addrlen) == 1)
         {
-            cerr << "setsockopt() to reuse port failed\n";
-            return 1;
-        }
-
-        if (bind(listening_descriptor, info->ai_addr, info->ai_addrlen) == 1)
-        {
-            close(listening_descriptor);
+            close(receiving_descriptor);
             cerr << "failed to bind()\n";
             continue;
         }
@@ -109,47 +103,28 @@ int main()
         return 1;
     }
 
-    if (listen(listening_descriptor, max_waiting_connections) == -1)
+    handle_sigchld();
+
+    cout << "server: ready to receive packets...\n";
+
+    string buf(max_data_size, '\0');
+    sockaddr_storage client_address;
+    socklen_t client_address_len{sizeof(client_address)};
+
+    int bytes_received{-1};
+    if (bytes_received = recvfrom(receiving_descriptor, buf.data(), buf.size() - 1, 0, 
+                                  reinterpret_cast<sockaddr*>(&client_address), &client_address_len);
+        bytes_received == -1)
     {
-        cerr << "listen() failed for descriptor " << listening_descriptor << '\n';
+        print_address(reinterpret_cast<sockaddr*>(&client_address), "failed to recvfrom() ");
         return 1;
     }
 
-    handle_sigchld();
+    print_address(reinterpret_cast<sockaddr*>(&client_address), 
+                    "received " + to_string(bytes_received) + " from ");
+    cout << "received message: " << buf << '\n';
 
-    cout << "server: waiting for connections...\n";
-
-    while (true)
-    {
-        sockaddr_storage client_addr;
-        socklen_t client_addr_size{sizeof(client_addr)};
-        int connection_descriptor = accept(listening_descriptor, 
-                                           reinterpret_cast<sockaddr*>(&client_addr), 
-                                           &client_addr_size);
-        if (connection_descriptor == -1)
-        {
-            cerr << "accept() failed\n";
-            continue;
-        }
-
-        print_address(reinterpret_cast<sockaddr*>(&client_addr), "got connection from ");
-
-        if (fork() == 0)
-        {
-            close(listening_descriptor);    // child process doesn't use this
-
-            const string msg = "server sends its regards!\n";
-            if (send(connection_descriptor, msg.c_str(), msg.size(), 0) == -1)
-            {
-                cerr << "send() to descriptor " << connection_descriptor << "failed\n";
-            }
-
-            close(connection_descriptor);
-            return 0;    // child process handles just one connection and then exits
-        }
-
-        close(connection_descriptor);   // parent process doesn't need this
-    }
+    close(receiving_descriptor);
 
     return 0;
 }

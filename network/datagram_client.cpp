@@ -10,8 +10,7 @@
 #include <sys/wait.h>
 using namespace std;
 
-const string port = "44444";
-const int max_data_size = 100;
+const string port = "44445";
 
 void* get_ip_addr(sockaddr* address)
 {
@@ -31,8 +30,8 @@ addrinfo* get_addr_info()
 {
     addrinfo hints;
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_family = AF_INET;          // only IPv4
+    hints.ai_socktype = SOCK_DGRAM;
 
     addrinfo* service_info;
     if (int status = getaddrinfo(nullptr, port.c_str(), &hints, &service_info);
@@ -47,55 +46,52 @@ addrinfo* get_addr_info()
 
 int main(int argc, char** argv)
 {
-    if (argc != 2)
+    if (argc != 3)
     {
-        cerr << "usage: stream_client <server_hostname>\n";
+        cerr << "usage: datagram_client <server_hostname> <message>\n";
         return 1;
     }
     
-    int sending_descriptor{-1};
-    bool connect_successful{false};
-    auto* service_info = get_addr_info();
+    auto* addr_info_list = get_addr_info();
 
-    for (auto* info = service_info; info != nullptr; info = info->ai_next)
+    bool successful{false};
+    int sending_descriptor{-1};
+    auto* server_info = addr_info_list;
+    for (; server_info != nullptr; server_info = server_info->ai_next)
     {
-        if (sending_descriptor = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
+        if (sending_descriptor = socket(server_info->ai_family, server_info->ai_socktype, server_info->ai_protocol);
             sending_descriptor == -1)
         {
-            cerr << "socket() failed: family[" << info->ai_family 
-                 << "] type[" << info->ai_socktype
-                 << "] protocol[" << info->ai_protocol << "]\n";
+            cerr << "socket() failed: family[" << server_info->ai_family 
+                 << "] type[" << server_info->ai_socktype
+                 << "] protocol[" << server_info->ai_protocol << "]\n";
             continue;
         }
 
-        if (connect(sending_descriptor, info->ai_addr, info->ai_addrlen) == -1)
-        {
-            close(sending_descriptor);
-            cerr << "connect(" << sending_descriptor << ") failed\n";
-            continue;
-        }
-
-        connect_successful = true;
-        print_address(info->ai_addr, "connected to ");
+        successful = true;
+        print_address(server_info->ai_addr, "created socket to connect to ");
         break;
     }
 
-    freeaddrinfo(service_info);
+    freeaddrinfo(addr_info_list);
 
-    if (!connect_successful)
+    if (!successful)
     {
-        cerr << "connect() never succeeded\n";
+        cerr << "socket() never succeeded\n";
         return 1;
     }
 
-    string msg(max_data_size, '\0');
-    if (recv(sending_descriptor, msg.data(), msg.size(), 0) == -1)
+    int bytes_sent{-1};
+    string message(argv[2]);
+    if (bytes_sent = sendto(sending_descriptor, message.c_str(), message.size(), 0, 
+                            server_info->ai_addr, server_info->ai_addrlen);
+        bytes_sent == -1)
     {
-        cerr << "recv(" << sending_descriptor << ") failed\n";
+        cerr << "sendto() failed\n";
         return 1;
     }
 
-    cout << "message from server: " << msg << '\n';
+    cout << "sent " << bytes_sent << " bytes to " << argv[1] << '\n';
     close(sending_descriptor);
 
     return 0;
