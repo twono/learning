@@ -19,7 +19,7 @@ int main()
     const int ANY_MSG_TYPE{0};
     const int key_seed{13};
 
-    int key{-1};
+    key_t key{-1};
     if (key = ftok("msg_queue_writer.cpp", key_seed); key == -1)    // same as writer
     {
         perror("ftok");
