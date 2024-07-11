@@ -22,9 +22,8 @@ int main()
 
     cout << "waiting for someone to start reading from " << fifo_name << '\n';
 
-    int fifo_fd;
-    if (fifo_fd = open(fifo_name.c_str(), O_WRONLY);
-        fifo_fd == -1)
+    const int fifo_fd{open(fifo_name.c_str(), O_WRONLY)};
+    if (fifo_fd == -1)
     {
         perror("open()");
         return 1;

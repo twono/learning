@@ -17,15 +17,15 @@ int main()
 {
     const int key_seed{13};
 
-    key_t key{-1};
-    if (key = ftok("msg_queue_writer.cpp", key_seed); key == -1)
+    const key_t key{ftok("msg_queue_writer.cpp", key_seed)};
+    if (key == -1)
     {
         perror("ftok");
         return 1;
     }
 
-    int msg_queue_id{-1};
-    if (msg_queue_id = msgget(key, IPC_CREAT | 0644); msg_queue_id == -1)
+    const int msg_queue_id{msgget(key, IPC_CREAT | 0644)};
+    if (msg_queue_id == -1)
     {
         perror("msgget");
         return 1;

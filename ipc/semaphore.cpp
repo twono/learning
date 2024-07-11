@@ -70,16 +70,16 @@ int init_semaphore(key_t key, int how_many)
 
 int main()
 {
-    int key_seed{34};
-    key_t key{-1};
-    if (key = ftok("semaphore.cpp", key_seed); key == -1)
+    const int key_seed{34};
+    const key_t key{ftok("semaphore.cpp", key_seed)};
+    if (key == -1)
     {
         perror("ftok");
         return 1;
     }
 
-    int semaphore_id;
-    if (semaphore_id = init_semaphore(key, 1); semaphore_id == -1)
+    const int semaphore_id{init_semaphore(key, 1)};
+    if (semaphore_id == -1)
     {
         perror("init_semaphore");
         return 1;

@@ -10,8 +10,8 @@ int main(int argc, char* argv[])
     flock fl{.l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0};
     if (argc > 1) fl.l_type = F_RDLCK;
     
-    int descriptor{-1};
-    if (descriptor = open("lock.cpp", O_RDWR); descriptor == -1)
+    const int descriptor{open("lock.cpp", O_RDWR)};
+    if (descriptor == -1)
     {
         perror("open()");
         return 1;

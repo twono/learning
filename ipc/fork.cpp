@@ -5,7 +5,7 @@ using namespace std;
 
 int main()
 {
-    auto pid = fork();
+    const auto pid{fork()};
     if (pid == -1)
     {
         perror("fork");
